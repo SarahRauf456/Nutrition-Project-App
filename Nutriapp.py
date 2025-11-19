@@ -43,10 +43,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# -------------------- DB INIT --------------------
-os.makedirs(DB_DIR, exist_ok=True)
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-cur = conn.cursor()
 
 # Create tables with consistent column names
 cur.executescript(
