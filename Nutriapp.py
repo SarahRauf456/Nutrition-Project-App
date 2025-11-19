@@ -199,44 +199,7 @@ CANNED_QA = {
     "when to see a doctor": "Seek care for chest pain, difficulty breathing, sudden weakness, severe dehydration, or severe/unusual symptoms."
 }
 
-# -------------------- SIDEBAR: Login (magic code demo) --------------------
-st.sidebar.title("Account")
 
-if "email" not in st.session_state:
-    st.sidebar.subheader("Sign in (demo)")
-    email_in = st.sidebar.text_input("Email for demo login")
-    if st.sidebar.button("Send magic code"):
-        if email_in:
-            code = gen_code()
-            insert_and_commit("INSERT INTO auth_codes(email,code,created_at) VALUES(?,?,?)", (email_in, code, now_iso()))
-            # Demo: show code in UI; in production you'd send via SMTP
-            st.sidebar.success("Demo code created (for demo only)")
-            st.sidebar.info(f"Demo code: {code}")
-            st.session_state["_pending_email"] = email_in
-    code_in = st.sidebar.text_input("Enter demo code")
-    if st.sidebar.button("Verify code"):
-        if "_pending_email" in st.session_state and code_in:
-            recent = cur.execute("SELECT code, created_at FROM auth_codes WHERE email=? ORDER BY id DESC LIMIT 1", (st.session_state["_pending_email"],)).fetchone()
-            if recent and recent[0] == code_in:
-                # optional: check TTL
-                st.session_state["email"] = st.session_state["_pending_email"]
-                # ensure user row exists
-                exists = cur.execute("SELECT email FROM users WHERE email=?", (st.session_state["email"],)).fetchone()
-                if not exists:
-                    insert_and_commit("INSERT INTO users(email, name, created_at) VALUES(?,?,?)",
-                                      (st.session_state["email"], st.session_state["email"].split("@")[0], now_iso()))
-                st.experimental_rerun()
-            else:
-                st.sidebar.error("Invalid code")
-    st.stop()
-else:
-    email = st.session_state["email"]
-    st.sidebar.markdown(f"{email}")
-    if st.sidebar.button("Logout"):
-        del st.session_state["email"]
-        st.experimental_rerun()
-
-is_admin = email in ADMIN_EMAILS
 
 # -------------------- NAVIGATION --------------------
 st.sidebar.markdown("---")
