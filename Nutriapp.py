@@ -31,6 +31,27 @@ CREATE TABLE IF NOT EXISTS auth_codes (
 )
 """)
 conn.commit()
+# --------------------------------------------------------
+# CONNECT
+# --------------------------------------------------------
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+cur = conn.cursor()
+
+# --------------------------------------------------------
+# FIX ERROR: DELETE OLD TABLE & RECREATE
+# --------------------------------------------------------
+cur.execute("DROP TABLE IF EXISTS auth_codes")
+conn.commit()
+
+cur.execute("""
+CREATE TABLE auth_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT,
+    code TEXT,
+    created_at TEXT
+)
+""")
+conn.commit()
 
 # Put admin emails here (or keep empty). If you publish repo publicly, avoid hardcoding sensitive emails.
 ADMIN_EMAILS = ["nehathegreat702@gmail.com"]
