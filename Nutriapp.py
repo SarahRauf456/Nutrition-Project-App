@@ -15,6 +15,9 @@ import sqlite3
 DB_DIR = "data"
 DB_PATH = os.path.join(DB_DIR, "nutriapp.db")
 
+st.write("DEBUG DB PATH:", DB_PATH)
+
+
 os.makedirs(DB_DIR, exist_ok=True)
 
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
