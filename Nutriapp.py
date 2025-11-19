@@ -9,6 +9,26 @@ import random
 import string
 import plotly.express as px
 import textwrap
+import os
+import sqlite3
+
+DB_DIR = "data"
+DB_PATH = os.path.join(DB_DIR, "nutriapp.db")
+
+os.makedirs(DB_DIR, exist_ok=True)
+
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+cur = conn.cursor()
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS auth_codes (
+    email TEXT,
+    code TEXT,
+    created_at TEXT
+)
+""")
+conn.commit()
+
 
 
 APP_TITLE = "Nutrition App — AI Health & Nutrition Analyzer"
