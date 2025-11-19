@@ -1,4 +1,4 @@
-
+# app.py
 import streamlit as st
 import sqlite3
 import os
@@ -9,66 +9,26 @@ import random
 import string
 import plotly.express as px
 import textwrap
-import os
-import sqlite3
 
+# -------------------- CONFIG --------------------
+APP_TITLE = "Nutrition App — AI Health & Nutrition Analyzer (Offline)"
 DB_DIR = "data"
 DB_PATH = os.path.join(DB_DIR, "nutriapp.db")
-
-st.write("DEBUG DB PATH:", DB_PATH)
-
-
-os.makedirs(DB_DIR, exist_ok=True)
-
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-cur = conn.cursor()
-
-cur.execute("""
-CREATE TABLE IF NOT EXISTS auth_codes (
-    email TEXT,
-    code TEXT,
-    created_at TEXT
-)
-""")
-conn.commit()
-
-
-
-APP_TITLE = "Nutrition App — AI Health & Nutrition Analyzer"
-DB_DIR = "data"
-DB_PATH = os.path.join(DB_DIR, "nutriapp.db")
-ADMIN_EMAILS = ["nehathegreat702@gmail.com"]   
+# Put admin emails here (or keep empty). If you publish repo publicly, avoid hardcoding sensitive emails.
+ADMIN_EMAILS = ["nehathegreat702@gmail.com"]
 MAGIC_CODE_TTL_MIN = 15
 
 st.set_page_config(page_title=APP_TITLE, layout="wide", initial_sidebar_state="expanded")
 
+# -------------------- DEBUG (prints useful info in app) --------------------
+st.write("DEBUG DB PATH:", DB_PATH)
 
-st.markdown(
-    """
-    <style>
-    .reportview-container, .main .block-container{
-        background: linear-gradient(135deg, #e6fffa 0%, #e0f2fe 40%, #dafaf3 100%);
-        border-radius: 12px;
-        padding: 1.2rem;
-    }
-    .card {
-        background: rgba(255,255,255,0.95);
-        border-radius: 12px;
-        padding: 12px;
-        box-shadow: 0 6px 20px rgba(17, 94, 89, 0.08);
-    }
-    h1, h2, h3 { color: #0f766e; }
-    .stSidebar .css-1d391kg { background: linear-gradient(180deg,#ffffff 0%, #f0f9f8 100%); }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
+# -------------------- DB INITIALIZATION --------------------
 os.makedirs(DB_DIR, exist_ok=True)
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cur = conn.cursor()
 
+# Create all necessary tables (single source of truth)
 cur.executescript(
     """
     CREATE TABLE IF NOT EXISTS users(
@@ -138,6 +98,7 @@ cur.executescript(
 )
 conn.commit()
 
+# -------------------- UTILITIES --------------------
 def insert_and_commit(query, params=()):
     try:
         cur.execute(query, params)
@@ -145,7 +106,6 @@ def insert_and_commit(query, params=()):
     except Exception as e:
         st.error(f"SQL ERROR: {e}")
         raise
-
 
 def query_df(query, params=()):
     return pd.read_sql_query(query, conn, params=params)
@@ -163,10 +123,13 @@ def prune_expired_codes(ttl_minutes=MAGIC_CODE_TTL_MIN):
 
 def verify_code(email, code, ttl_minutes=MAGIC_CODE_TTL_MIN):
     prune_expired_codes(ttl_minutes)
-    row = cur.execute("SELECT created_at FROM auth_codes WHERE email=? AND code=? ORDER BY created_at DESC LIMIT 1", (email, code)).fetchone()
+    row = cur.execute(
+        "SELECT created_at FROM auth_codes WHERE email=? AND code=? ORDER BY created_at DESC LIMIT 1",
+        (email, code)
+    ).fetchone()
     return bool(row)
 
-# -------------------- SMALL FOOD DB (auto nutrition lookup) --------------------
+# -------------------- SMALL FOOD DB --------------------
 FOOD_DB = {
     "oatmeal": {"cal": 150, "protein": 5, "carbs": 27, "fat": 3},
     "banana": {"cal": 105, "protein": 1.3, "carbs": 27, "fat": 0.4},
@@ -182,26 +145,27 @@ FOOD_DB = {
     "salad (veg)": {"cal": 120, "protein": 3, "carbs": 10, "fat": 8},
 }
 
+# -------------------- EXERCISES & CANNED QA --------------------
 EXERCISES = {
     "Hands": [
-        {"name": "Push-ups", "desc": "Bodyweight exercise for chest/triceps/shoulders.", "img": "https://images.unsplash.com/photo-1558611848-73f7eb4001d4?w=800&q=80"},
-        {"name": "Bicep Curls", "desc": "Dumbbell curls for biceps.", "img": "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=800&q=80"},
+        {"name": "Push-ups", "desc": "Bodyweight exercise for chest/triceps/shoulders.", "img": ""},
+        {"name": "Bicep Curls", "desc": "Dumbbell curls for biceps.", "img": ""},
     ],
     "Legs": [
-        {"name": "Squats", "desc": "Quad & glute-builder. Keep knees aligned.", "img": "https://images.unsplash.com/photo-1546484959-f8d2f8d2b432?w=800&q=80"},
-        {"name": "Lunges", "desc": "Balance & unilateral strength.", "img": "https://images.unsplash.com/photo-1594737625785-2e0b5d2bc9a5?w=800&q=80"},
+        {"name": "Squats", "desc": "Quad & glute-builder. Keep knees aligned.", "img": ""},
+        {"name": "Lunges", "desc": "Balance & unilateral strength.", "img": ""},
     ],
     "Core": [
-        {"name": "Plank", "desc": "Hold straight bodyline for core stability.", "img": "https://images.unsplash.com/photo-1558611847-6c3f1a5c9a5b?w=800&q=80"},
-        {"name": "Russian Twist", "desc": "Rotational core exercise.", "img": "https://images.unsplash.com/photo-1534367614595-3f1a8d4a0e0a?w=800&q=80"},
+        {"name": "Plank", "desc": "Hold straight bodyline for core stability.", "img": ""},
+        {"name": "Russian Twist", "desc": "Rotational core exercise.", "img": ""},
     ],
     "Back": [
-        {"name": "Superman", "desc": "Back-extension to target lower back.", "img": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&q=80"},
-        {"name": "Bent-over Row", "desc": "Rowing motion to strengthen back.", "img": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80"},
+        {"name": "Superman", "desc": "Back-extension to target lower back.", "img": ""},
+        {"name": "Bent-over Row", "desc": "Rowing motion to strengthen back.", "img": ""},
     ],
     "Full-body": [
-        {"name": "Burpees", "desc": "High-intensity full-body movement.", "img": "https://images.unsplash.com/photo-1554244934-336a2f2b6a24?w=800&q=80"},
-        {"name": "Kettlebell Swing", "desc": "Hip hinge power movement.", "img": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80"},
+        {"name": "Burpees", "desc": "High-intensity full-body movement.", "img": ""},
+        {"name": "Kettlebell Swing", "desc": "Hip hinge power movement.", "img": ""},
     ],
 }
 
@@ -212,10 +176,10 @@ CANNED_QA = {
     "how much water": "Aim ~2000–3000 ml/day, more if active or hot. Log water in Hydration tab.",
     "post workout meal": "Combining protein + carbs helps recovery (e.g., chicken + rice or protein shake + banana).",
     "how to lose weight": "Mild calorie deficit, prioritize protein & strength training, sleep, hydration, and consistency.",
-    # ... (keep other canned answers)
+    "how to gain muscle": "Progressive overload resistance training + 1.6–2.2 g/kg protein and slight calorie surplus.",
 }
 
-# -------------------- SESSION STATE --------------------
+# -------------------- SESSION --------------------
 if "email" not in st.session_state:
     st.session_state.email = ""
 if "logged_in" not in st.session_state:
@@ -227,22 +191,24 @@ if "shown_code" not in st.session_state:
 
 # -------------------- AUTH UI --------------------
 st.sidebar.markdown("---")
-st.sidebar.header("Login")
+st.sidebar.header("Login (offline/magic code)")
 
 def send_code_flow(email_in):
-    email_in = email_in.strip().lower()
+    email_in = (email_in or "").strip().lower()
     if not email_in:
         st.sidebar.error("Enter an email")
         return
     code = gen_code(6)
     insert_and_commit("INSERT INTO auth_codes(email, code, created_at) VALUES (?, ?, ?)", (email_in, code, now_iso()))
     st.session_state.just_sent_code = True
-    st.session_state.shown_code = code  # shown on-screen for offline testing
-    st.sidebar.success("Magic code generated (shown below). Expires in %d minutes." % MAGIC_CODE_TTL_MIN)
-    st.sidebar.info(f"Code (for testing): {code}")
+    st.session_state.shown_code = code
+    st.session_state.email = email_in
+    st.sidebar.success(f"Magic code generated (expires in {MAGIC_CODE_TTL_MIN} minutes)")
+    # Show code on-screen for offline testing
+    st.sidebar.info(f"DEBUG CODE: {code}")
 
 def verify_flow(email_in, code_in):
-    email_in = email_in.strip().lower()
+    email_in = (email_in or "").strip().lower()
     if verify_code(email_in, code_in):
         st.session_state.logged_in = True
         st.session_state.email = email_in
@@ -266,7 +232,6 @@ with st.sidebar.form("auth_form"):
             st.session_state.email = ""
             st.experimental_rerun()
 
-# expose values in main app
 email = st.session_state.email
 is_admin = (email in ADMIN_EMAILS) if email else False
 
@@ -336,7 +301,7 @@ elif page == "Nutrition":
     else:
         st.header("Nutrition — log meals (auto nutrition from built-in DB)")
         food_input = st.text_input("Food / dish name (try: oatmeal, grilled chicken, salmon)")
-        lookup = FOOD_DB.get(food_input.lower())
+        lookup = FOOD_DB.get(food_input.lower()) if food_input else None
         if lookup:
             st.info("Auto-filled nutrition from built-in food DB. You can edit values.")
         default_cal = lookup['cal'] if lookup else 300
@@ -389,7 +354,8 @@ elif page == "Exercises":
         cols = st.columns(2)
         for i, ex in enumerate(examples):
             with cols[i % 2]:
-                st.image(ex['img'], width=260)
+                if ex['img']:
+                    st.image(ex['img'], width=260)
                 st.markdown(f"**{ex['name']}**")
                 st.write(ex['desc'])
 
@@ -453,16 +419,15 @@ elif page == "Sleep & Habits":
                         else:
                             new_streak = 1
                         insert_and_commit("UPDATE habits SET last_completed=?, streak=? WHERE id=?", (today, new_streak, int(r['id'])))
-                        st.experimental_rerun()
-        else:
-            st.info("No habits yet")
 
-# -------------------- DIET GENERATOR & FORECAST --------------------
+# -------------------- DIET GENERATOR (heuristic AI-like) --------------------
 elif page == "Diet Generator":
     if not st.session_state.logged_in:
         st.info("Please login first (sidebar).")
     else:
-        st.header("Balanced Diet Generator & Meal Forecast")
+        st.header("Balanced Diet Generator & Meal Forecast (offline)")
+
+        # estimate target calories using Mifflin-St Jeor
         user = query_df("SELECT * FROM users WHERE email=?", (email,))
         def calc_target(user_row):
             try:
@@ -473,7 +438,7 @@ elif page == "Diet Generator":
                 sex = user_row['gender']
                 s = 5 if str(sex).lower().startswith('m') else -161
                 bmr = 10*w + 6.25*h - 5*age + s
-                factor = {"sedentary":1.2, "light":1.375, "moderate":1.55, "active":1.725, "very active":1.9}.get(user_row.get('activity_level', ''), 1.55)
+                factor = {"sedentary":1.2, "light":1.375, "moderate":1.55, "active":1.725, "very active":1.9}.get(user_row.get('activity_level',''), 1.55)
                 return int(bmr * factor)
             except Exception:
                 return 2000
@@ -488,9 +453,9 @@ elif page == "Diet Generator":
                 lunch = random.choice(foods)
                 dinner = random.choice(foods)
                 plan.append(((date.today() + timedelta(days=d)).isoformat(), [breakfast, lunch, dinner]))
-            for d, meals in plan:
+            for d, meals_list in plan:
                 st.subheader(d)
-                for m in meals:
+                for m in meals_list:
                     info = FOOD_DB.get(m, {})
                     st.write(f"- {m} — ~{info.get('cal','--')} kcal, protein {info.get('protein','--')} g")
 
@@ -536,29 +501,30 @@ elif page == "Medical Advisor":
 # -------------------- AI CHATBOT (offline canned) --------------------
 elif page == "AI Chatbot":
     st.header("AI Chatbot (offline canned Q&A)")
-    query = st.text_input("Ask a question (examples: 'how much protein', 'post workout meal')")
+    q = st.text_input("Ask a question (examples: 'how much protein', 'post workout meal')")
     if st.button("Ask"):
-        if not query.strip():
+        if not q.strip():
             st.info("Type a question")
         else:
-            ql = query.lower()
+            ql = q.lower()
             answered = False
             for k, v in CANNED_QA.items():
                 if k in ql:
-                    st.markdown(f"*Q:* {query}\n\n*A:* {v}")
+                    st.markdown(f"*Q:* {q}\n\n*A:* {v}")
                     answered = True
                     break
             if not answered:
+                # fallback: substring match on tokens
                 for k, v in CANNED_QA.items():
                     for token in k.split():
                         if token in ql:
-                            st.markdown(f"*Q:* {query}\n\n*A:* {v}")
+                            st.markdown(f"*Q:* {q}\n\n*A:* {v}")
                             answered = True
                             break
                     if answered:
                         break
             if not answered:
-                st.markdown(f"*Q:* {query}\n\n*A:* I don't have a canned answer for that — try rephrasing.")
+                st.markdown(f"*Q:* {q}\n\n*A:* I don't have a canned answer for that — try rephrasing.")
 
 # -------------------- DASHBOARD --------------------
 elif page == "Dashboard":
@@ -566,11 +532,12 @@ elif page == "Dashboard":
         st.info("Please login first (sidebar).")
     else:
         st.header("Dashboard — Visual Summary")
+
         meals = query_df("SELECT timestamp, calories, protein, carbs, fat FROM meals WHERE email=? ORDER BY timestamp DESC LIMIT 365", (email,))
         if not meals.empty:
             meals['timestamp'] = pd.to_datetime(meals['timestamp'])
             st.subheader("Calories over time")
-            fig = px.line(meals, x='timestamp', y='calories', title="Calories (meals)", markers=True)
+            fig = px.line(meals, x='timestamp', y='calories', title="Meal calories over time", markers=True)
             st.plotly_chart(fig, use_container_width=True)
 
             last30 = meals.head(30)
@@ -586,7 +553,7 @@ elif page == "Dashboard":
 
         ex = query_df("SELECT category, COUNT(*) as cnt FROM exercises WHERE email=? GROUP BY category", (email,))
         if not ex.empty:
-            st.subheader("Exercise categories (distribution)")
+            st.subheader("Exercise categories")
             fig3 = px.pie(ex, names='category', values='cnt')
             st.plotly_chart(fig3, use_container_width=True)
 
@@ -609,11 +576,17 @@ elif page == "Dashboard":
         st.subheader("Smart recommendations")
         recs = []
         since = (datetime.utcnow() - timedelta(hours=24)).isoformat()
-        tw = cur.execute("SELECT SUM(ml) FROM water_logs WHERE email=? AND timestamp>=?", (email, since)).fetchone()[0]
-        tw = int(tw) if tw else 0
+        try:
+            tw = cur.execute("SELECT SUM(ml) FROM water_logs WHERE email=? AND timestamp>=?", (email, since)).fetchone()[0]
+            tw = int(tw) if tw else 0
+        except:
+            tw = 0
         if tw < 1800:
             recs.append(f"You logged {tw} ml in the last 24h — aim for ~2000-3000 ml/day.")
-        cnt_ex = cur.execute("SELECT COUNT(*) FROM exercises WHERE email=? AND timestamp>=?", (email, (datetime.utcnow() - timedelta(days=7)).isoformat())).fetchone()[0]
+        try:
+            cnt_ex = cur.execute("SELECT COUNT(*) FROM exercises WHERE email=? AND timestamp>=?", (email, (datetime.utcnow() - timedelta(days=7)).isoformat())).fetchone()[0]
+        except:
+            cnt_ex = 0
         if cnt_ex < 2:
             recs.append("You logged fewer than 2 exercise sessions in the last 7 days — try a short routine this week.")
         avg_sleep = query_df("SELECT AVG(hours) as avg_hours FROM sleep_logs WHERE email=? AND date>=?", (email, (date.today() - timedelta(days=7)).isoformat()))
@@ -662,3 +635,6 @@ elif page == "Admin":
                 st.download_button(f"Download {name}.csv", data=csv, file_name=f"{name}.csv")
 
 # -------------------- END --------------------
+
+
+          
