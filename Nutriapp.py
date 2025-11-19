@@ -139,6 +139,10 @@ conn.commit()
 
 # -------------------- UTILITIES --------------------
 def insert_and_commit(query, params=()):
+    """
+    Safely execute INSERT/UPDATE queries.
+    Shows Streamlit error if something fails.
+    """
     try:
         cur.execute(query, params)
         conn.commit()
@@ -146,29 +150,61 @@ def insert_and_commit(query, params=()):
         st.error(f"SQL ERROR: {e}")
         raise
 
+
 def query_df(query, params=()):
+    """
+    Run a SELECT query and return results as a DataFrame.
+    """
     return pd.read_sql_query(query, conn, params=params)
 
+
 def gen_code(length=6):
+    """
+    Generate a numeric OTP of given length.
+    """
     return ''.join(random.choices(string.digits, k=length))
 
+
 def now_iso():
+    """
+    Return current UTC time in a safe SQLite-friendly format.
+    Example: 2025-01-18 14:32:10
+    """
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+
 def prune_expired_codes(ttl_minutes=MAGIC_CODE_TTL_MIN):
+    """
+    Delete old OTPs older than X minutes.
+    Run AFTER verifying, not before.
+    """
     cutoff = (datetime.utcnow() - timedelta(minutes=ttl_minutes)).strftime("%Y-%m-%d %H:%M:%S")
     cur.execute("DELETE FROM auth_codes WHERE created_at < ?", (cutoff,))
     conn.commit()
 
+
 def verify_code(email, code):
+    """
+    Check if OTP exists and is not expired.
+    DOES NOT delete first. 
+    Returns True if valid, False otherwise.
+    """
     cutoff = (datetime.utcnow() - timedelta(minutes=MAGIC_CODE_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S")
 
     row = cur.execute("""
-        SELECT 1 FROM auth_codes
-        WHERE email = ? AND code = ? AND created_at >= ?
-        ORDER BY created_at DESC LIMIT 1
+        SELECT 1 
+        FROM auth_codes
+        WHERE email = ? 
+          AND code = ? 
+          AND created_at >= ?
+        ORDER BY created_at DESC 
+        LIMIT 1
     """, (email, code, cutoff)).fetchone()
 
     return row is not None
+cur.execute("DELETE FROM auth_codes")
+conn.commit()
+
 
 
 # -------------------- SMALL FOOD DB --------------------
