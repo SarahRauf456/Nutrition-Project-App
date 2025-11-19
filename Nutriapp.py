@@ -1,4 +1,4 @@
-# nutriapp_streamlit.py
+
 import streamlit as st
 import sqlite3
 import os
@@ -10,7 +10,7 @@ import string
 import plotly.express as px
 import textwrap
 
-# -------------------- CONFIG --------------------
+
 APP_TITLE = "Nutrition App — AI Health & Nutrition Analyzer"
 DB_DIR = "data"
 DB_PATH = os.path.join(DB_DIR, "nutriapp.db")
@@ -19,7 +19,7 @@ MAGIC_CODE_TTL_MIN = 15
 
 st.set_page_config(page_title=APP_TITLE, layout="wide", initial_sidebar_state="expanded")
 
-# -------------------- STYLE --------------------
+
 st.markdown(
     """
     <style>
@@ -41,7 +41,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# -------------------- DB SETUP --------------------
+
 os.makedirs(DB_DIR, exist_ok=True)
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cur = conn.cursor()
@@ -115,10 +115,14 @@ cur.executescript(
 )
 conn.commit()
 
-# -------------------- UTILITIES --------------------
 def insert_and_commit(query, params=()):
-    cur.execute(query, params)
-    conn.commit()
+    try:
+        cur.execute(query, params)
+        conn.commit()
+    except Exception as e:
+        st.error(f"SQL ERROR: {e}")
+        raise
+
 
 def query_df(query, params=()):
     return pd.read_sql_query(query, conn, params=params)
