@@ -40,6 +40,7 @@ cur = conn.cursor()
 # --------------------------------------------------------
 # FIX ERROR: DELETE OLD TABLE & RECREATE
 # --------------------------------------------------------
+cur.execute("DROP TABLE IF EXISTS auth_codes")
 conn.commit()
 
 cur.execute("""
