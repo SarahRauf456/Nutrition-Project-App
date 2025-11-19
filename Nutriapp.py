@@ -40,7 +40,6 @@ cur = conn.cursor()
 # --------------------------------------------------------
 # FIX ERROR: DELETE OLD TABLE & RECREATE
 # --------------------------------------------------------
-cur.execute("DROP TABLE IF EXISTS auth_codes")
 conn.commit()
 
 cur.execute("""
@@ -153,20 +152,23 @@ def gen_code(length=6):
     return ''.join(random.choices(string.digits, k=length))
 
 def now_iso():
-    return datetime.utcnow().isoformat()
-
+    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 def prune_expired_codes(ttl_minutes=MAGIC_CODE_TTL_MIN):
-    cutoff = (datetime.utcnow() - timedelta(minutes=ttl_minutes)).isoformat()
-    cur.execute("DELETE FROM auth_codes WHERE created_at<?", (cutoff,))
+    cutoff = (datetime.utcnow() - timedelta(minutes=ttl_minutes)).strftime("%Y-%m-%d %H:%M:%S")
+    cur.execute("DELETE FROM auth_codes WHERE created_at < ?", (cutoff,))
     conn.commit()
 
-def verify_code(email, code, ttl_minutes=MAGIC_CODE_TTL_MIN):
-    prune_expired_codes(ttl_minutes)
-    row = cur.execute(
-        "SELECT created_at FROM auth_codes WHERE email=? AND code=? ORDER BY created_at DESC LIMIT 1",
-        (email, code)
-    ).fetchone()
-    return bool(row)
+def verify_code(email, code):
+    cutoff = (datetime.utcnow() - timedelta(minutes=MAGIC_CODE_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S")
+
+    row = cur.execute("""
+        SELECT 1 FROM auth_codes
+        WHERE email = ? AND code = ? AND created_at >= ?
+        ORDER BY created_at DESC LIMIT 1
+    """, (email, code, cutoff)).fetchone()
+
+    return row is not None
+
 
 # -------------------- SMALL FOOD DB --------------------
 FOOD_DB = {
