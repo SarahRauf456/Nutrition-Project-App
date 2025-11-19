@@ -13,7 +13,25 @@ import textwrap
 # -------------------- CONFIG --------------------
 APP_TITLE = "Nutrition App — AI Health & Nutrition Analyzer (Offline)"
 DB_DIR = "data"
+os.makedirs(DB_DIR, exist_ok=True)  
+
 DB_PATH = os.path.join(DB_DIR, "nutriapp.db")
+import streamlit as st
+st.write("USING DATABASE FILE AT:", os.path.abspath(DB_PATH))
+import sqlite3
+
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+cur = conn.cursor()
+cur.execute("""
+CREATE TABLE IF NOT EXISTS auth_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT,
+    code TEXT,
+    created_at TEXT
+)
+""")
+conn.commit()
+
 # Put admin emails here (or keep empty). If you publish repo publicly, avoid hardcoding sensitive emails.
 ADMIN_EMAILS = ["nehathegreat702@gmail.com"]
 MAGIC_CODE_TTL_MIN = 15
